@@ -2,7 +2,7 @@
 # Dashboard → New → Blueprint → select this repo → Apply.
 services:
   - type: web
-    name: deal-evaluator
+    name: tcg-deal-evaluator
     runtime: static
     repo: https://github.com/Dad699/deal-evaluator
     branch: main
