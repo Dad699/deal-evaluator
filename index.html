@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Deal Evaluator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #f8f9fb;
+    --border: #e4e7ec;
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #1e3a8a;
+    --accent-ink: #ffffff;
+    --take: #15803d;    --take-bg: #ecfdf3;   --take-bd: #a7f3c9;
+    --counter: #b45309; --counter-bg: #fffbeb; --counter-bd: #fcd88a;
+    --pass: #b91c1c;    --pass-bg: #fef2f2;   --pass-bd: #fecaca;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(15,23,42,.04), 0 4px 16px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+  header {
+    background: var(--accent); color: var(--accent-ink);
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  header h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .01em; }
+  header .sub { font-size: 12px; opacity: .75; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px; margin-bottom: 14px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .card .hint { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+  .field { margin-bottom: 14px; position: relative; }
+  input[type=text], input[type=number], textarea, select {
+    width: 100%; font: inherit; font-size: 16px; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; outline: none; -webkit-appearance: none; appearance: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(30,58,138,.12); background: #fff; }
+  textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+  select { background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 36px; }
+  .row { display: flex; gap: 12px; }
+  .row > .field { flex: 1; min-width: 0; }
+  .prefix { position: relative; }
+  .prefix input { padding-left: 30px; }
+  .prefix::before { content: "$"; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 500; pointer-events: none; }
+  .suffix { position: relative; }
+  .suffix input { padding-right: 34px; }
+  .suffix::after { content: "%"; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 500; pointer-events: none; }
+  button {
+    font: inherit; font-weight: 600; font-size: 15px; border: 0; border-radius: 10px;
+    padding: 13px 18px; cursor: pointer; background: var(--accent); color: var(--accent-ink);
+    transition: filter .12s, transform .05s; touch-action: manipulation;
+  }
+  button:active { transform: translateY(1px); }
+  button:hover { filter: brightness(1.08); }
+  button.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  button.danger { background: var(--pass-bg); color: var(--pass); border: 1px solid var(--pass-bd); }
+  button.small { padding: 9px 14px; font-size: 13px; }
+  button.block { width: 100%; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  .btnrow button { flex: 1; }
+  .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
+  .pill.ok { background: var(--take-bg); border-color: var(--take-bd); color: var(--take); }
+  .pill.warn { background: var(--counter-bg); border-color: var(--counter-bd); color: var(--counter); }
+  .note { background: var(--counter-bg); border: 1px solid var(--counter-bd); color: #7c4a03; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 14px; }
+  .note.info { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; }
+  .error { color: var(--pass); font-size: 13px; margin-top: 6px; }
+
+  /* autocomplete */
+  .ac { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); margin-top: 4px; max-height: 260px; overflow-y: auto; }
+  .ac div { padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .ac div:last-child { border-bottom: 0; }
+  .ac div:hover, .ac div.hi { background: var(--surface-2); }
+  .ac .v { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ac .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* verdict */
+  .verdict { border-radius: var(--radius); padding: 20px; margin-bottom: 14px; border: 1px solid; box-shadow: var(--shadow); }
+  .verdict.take { background: var(--take-bg); border-color: var(--take-bd); color: var(--take); }
+  .verdict.counter { background: var(--counter-bg); border-color: var(--counter-bd); color: var(--counter); }
+  .verdict.pass { background: var(--pass-bg); border-color: var(--pass-bd); color: var(--pass); }
+  .verdict .label { font-size: 34px; font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+  .verdict .delta { font-size: 15px; font-weight: 600; margin-top: 4px; }
+  .verdict .counterPrice { margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,.7); border-radius: 10px; color: var(--text); }
+  .verdict .counterPrice b { font-size: 22px; }
+  .verdict ul { margin: 14px 0 0; padding-left: 18px; color: var(--text); font-size: 14px; }
+  .verdict li { margin: 4px 0; }
+  .verdict .item { color: var(--text); font-weight: 600; font-size: 14px; margin-bottom: 8px; opacity: .85; }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+  td .tag { font-weight: 700; font-size: 12px; }
+  .tag.TAKE { color: var(--take); } .tag.COUNTER { color: var(--counter); } .tag.PASS { color: var(--pass); }
+  .empty { color: var(--muted); font-size: 14px; padding: 18px 0; text-align: center; }
+
+  /* threshold visual */
+  .band { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 14px 0 6px; }
+  .band span { display: block; }
+  .band .p { background: #fca5a5; } .band .c { background: #fcd34d; } .band .t { background: #86efac; } .band .f { background: #e5e7eb; }
+  .bandlbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+  /* bottom nav */
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    display: flex; justify-content: space-around;
+  }
+  nav button { flex: 1; background: none; color: var(--muted); font-size: 11px; font-weight: 600; padding: 6px 4px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav button svg { width: 22px; height: 22px; }
+  nav button.active { color: var(--accent); background: rgba(30,58,138,.07); }
+  nav button:hover { filter: none; }
+  .badge { position: absolute; }
+  @media (min-width: 640px) {
+    main { padding: 24px 16px; }
+    .verdict .label { font-size: 40px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Deal Evaluator</h1>
+    <div class="sub">Offer vs. tracked value &middot; take / counter / pass</div>
+  </div>
+  <span class="pill" id="hdrCount">no prices loaded</span>
+</header>
+
+<main>
+
+  <!-- ============ EVALUATE ============ -->
+  <section class="panel active" id="panel-eval">
+    <div id="noPrices" class="note info" hidden>No price table loaded yet. Go to <b>Prices</b> to paste a Collectr export, or type a tracked value manually below.</div>
+
+    <div class="card">
+      <h2>Evaluate an offer</h2>
+      <p class="hint">Offer price is per unit. Tracked value fills in from your price table.</p>
+
+      <div class="field">
+        <label for="item">Item</label>
+        <input type="text" id="item" placeholder="Search your price table…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="ac" id="ac" hidden></div>
+      </div>
+
+      <div class="row">
+        <div class="field prefix">
+          <label for="tracked">Tracked value</label>
+          <input type="number" id="tracked" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="field prefix">
+          <label for="offer">Offer (per unit)</label>
+          <input type="number" id="offer" inputmode="decimal" step="0.01" min="0" placeholder="0.00">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="qty">Quantity</label>
+          <input type="number" id="qty" inputmode="numeric" step="1" min="1" value="1">
+        </div>
+        <div class="field" style="flex:2; display:flex; align-items:flex-end;">
+          <button class="block" id="evalBtn">Evaluate</button>
+        </div>
+      </div>
+      <div class="error" id="evalErr"></div>
+    </div>
+
+    <div id="verdict"></div>
+  </section>
+
+  <!-- ============ PRICES ============ -->
+  <section class="panel" id="panel-prices">
+    <div class="card">
+      <h2>Price table</h2>
+      <p class="hint">Paste a Collectr CSV export, or type <code>item, value</code> lines by hand. Stored on this device only.</p>
+      <div class="meta" style="margin-bottom:12px">
+        <span id="priceMeta">Nothing loaded.</span>
+        <span class="pill" id="priceCount">0 items</span>
+      </div>
+
+      <div class="field">
+        <label for="csvIn">Paste CSV or manual lines</label>
+        <textarea id="csvIn" placeholder="Product Name,Set,Market Value
+Charizard ex 199/165,Obsidian Flames,142.50
+
+— or one per line —
+Paldea Evolved Booster Box : 155
+151 Elite Trainer Box, 89.99"></textarea>
+      </div>
+      <div class="btnrow">
+        <button id="parseBtn">Preview</button>
+        <button class="secondary" id="clearCsvBtn">Clear box</button>
+      </div>
+      <div class="error" id="csvErr"></div>
+    </div>
+
+    <div class="card" id="mapCard" hidden>
+      <h2>Column mapping</h2>
+      <p class="hint">Auto-detected from the header row. Fix it here if the preview looks wrong.</p>
+      <div class="row">
+        <div class="field"><label for="colName">Name column</label><select id="colName"></select></div>
+        <div class="field"><label for="colValue">Value column</label><select id="colValue"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="colSet">Set / subtitle (optional)</label><select id="colSet"></select></div>
+        <div class="field"><label for="colQty">Quantity (optional)</label><select id="colQty"></select></div>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="divideQty" style="width:18px;height:18px;margin:0">
+        <span style="font-size:14px">Value column is a <b>total</b> — divide by quantity to get per-unit</span>
+      </div>
+      <div class="meta" style="margin-bottom:10px"><span id="mapSummary"></span></div>
+      <div class="tablewrap"><table id="previewTbl"></table></div>
+      <div class="btnrow" style="margin-top:14px">
+        <button id="loadBtn">Replace price table</button>
+        <button class="secondary" id="mergeBtn">Merge into existing</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="meta" style="margin-bottom:10px">
+        <h2 style="margin:0">Loaded items</h2>
+        <button class="small danger" id="clearPricesBtn">Remove all</button>
+      </div>
+      <div class="field"><input type="text" id="priceFilter" placeholder="Filter…" autocomplete="off"></div>
+      <div class="tablewrap"><table id="priceTbl"></table></div>
+    </div>
+  </section>
+
+  <!-- ============ THRESHOLDS ============ -->
+  <section class="panel" id="panel-thresh">
+    <div class="card">
+      <h2>Thresholds</h2>
+      <p class="hint">All percentages are relative to tracked value. Changes save automatically and apply to the next evaluation.</p>
+      <div class="note"><b>Starting points, not calibrated.</b> These defaults are placeholders — tune them against real deals you've done. Nothing here has been validated against outcomes yet.</div>
+
+      <div class="field suffix">
+        <label for="tTake">TAKE if offer is at least this far <u>under</u> tracked</label>
+        <input type="number" id="tTake" inputmode="decimal" step="0.5">
+      </div>
+      <div class="field suffix">
+        <label for="tCounterMax">COUNTER band extends up to this far <u>over</u> tracked</label>
+        <input type="number" id="tCounterMax" inputmode="decimal" step="0.5">
+      </div>
+      <div class="field suffix">
+        <label for="tCounterTarget">Suggested counter: aim this far <u>under</u> tracked</label>
+        <input type="number" id="tCounterTarget" inputmode="decimal" step="0.5">
+      </div>
+      <div class="field suffix">
+        <label for="tFloor">Sanity floor: PASS if offer is more than this far under (too good to be true)</label>
+        <input type="number" id="tFloor" inputmode="decimal" step="0.5">
+      </div>
+
+      <div class="band" id="band"></div>
+      <div class="bandlbl"><span>offer far below tracked</span><span>offer above tracked</span></div>
+      <p class="hint" id="bandText" style="margin-top:10px"></p>
+
+      <div class="btnrow"><button class="secondary" id="resetThreshBtn">Reset to defaults</button></div>
+    </div>
+  </section>
+
+  <!-- ============ LOG ============ -->
+  <section class="panel" id="panel-log">
+    <div class="card">
+      <div class="meta" style="margin-bottom:6px">
+        <h2 style="margin:0">Evaluation log</h2>
+        <span class="pill" id="logCount">0</span>
+      </div>
+      <p class="hint">Every evaluation is recorded here. Export it periodically — this is the seed of your outcome dataset.</p>
+      <div class="btnrow" style="margin-bottom:12px">
+        <button id="exportBtn">Export CSV</button>
+        <button class="secondary" id="clearLogBtn">Clear log</button>
+      </div>
+      <div id="clearLogConfirm" class="note" hidden>
+        Delete all <span id="clearLogN"></span> entries? This can't be undone.
+        <div class="btnrow" style="margin-top:8px"><button class="small danger" id="clearLogYes">Yes, delete</button><button class="small secondary" id="clearLogNo">Keep</button></div>
+      </div>
+      <div class="tablewrap"><table id="logTbl"></table></div>
+    </div>
+  </section>
+
+</main>
+
+<nav>
+  <button data-panel="eval" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Evaluate</button>
+  <button data-panel="prices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Prices</button>
+  <button data-panel="thresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>Thresholds</button>
+  <button data-panel="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Log</button>
+</nav>
+
+<script>
+/* =====================================================================
+   CONFIG — edit here for code-level changes. Everything below persists
+   user edits in localStorage under the STORE_KEYS.
+   ===================================================================== */
+const DEFAULT_THRESHOLDS = {
+  takePct: 15,          // TAKE when discount >= 15% under tracked
+  counterMaxOverPct: 5, // COUNTER band reaches up to 5% OVER tracked; beyond that => PASS
+  counterTargetPct: 15, // suggested counter = tracked * (1 - 15%)
+  floorPct: 60,         // PASS (sanity) when discount >= 60% — too good to be true
+};
+
+// Header names (lower-cased, punctuation stripped) that identify each column in a
+// pasted CSV. First match wins, in order. Add Collectr's real header names here if
+// they change.
+const COLUMN_HINTS = {
+  name:  ['product name', 'product', 'item name', 'item', 'card name', 'card', 'name', 'title'],
+  value: ['market value', 'market price', 'tcgplayer market', 'current value', 'value', 'price', 'estimated value', 'avg price', 'market'],
+  set:   ['set name', 'set', 'expansion', 'series', 'edition'],
+  qty:   ['quantity', 'qty', 'count', 'owned'],
+};
+
+const STORE_KEYS = { prices: 'de.prices.v1', thresholds: 'de.thresholds.v1', log: 'de.log.v1' };
+
+/* ===================== storage ===================== */
+const store = {
+  get(k, fallback) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
+};
+
+let prices = store.get(STORE_KEYS.prices, { updatedAt: null, items: [] }); // items: [{name, value, set?}]
+let thresholds = Object.assign({}, DEFAULT_THRESHOLDS, store.get(STORE_KEYS.thresholds, {}));
+let log = store.get(STORE_KEYS.log, []);
+
+/* ===================== helpers ===================== */
+const $ = (id) => document.getElementById(id);
+const fmt$ = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPct = (n) => (n >= 0 ? '' : '−') + Math.abs(n).toFixed(1) + '%';
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const normHeader = (h) => String(h || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const parseMoney = (v) => {
+  if (v == null) return NaN;
+  const s = String(v).replace(/[^0-9.\-]/g, '');
+  return s === '' || s === '-' ? NaN : parseFloat(s);
+};
+const fmtWhen = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
+/* ===================== evaluator (pure) ===================== */
+function evaluate({ tracked, offer, qty, t }) {
+  const discount = (tracked - offer) / tracked * 100; // positive = under tracked
+  const total = offer * qty;
+  const trackedTotal = tracked * qty;
+  const reasons = [];
+  let verdict, counter = null;
+
+  reasons.push(`Tracked value ${fmt$(tracked)}${qty > 1 ? ` × ${qty} = ${fmt$(trackedTotal)}` : ''}`);
+  reasons.push(discount >= 0
+    ? `Offer ${fmt$(offer)} is ${fmtPct(discount)} under tracked (${fmt$(tracked - offer)} per unit)`
+    : `Offer ${fmt$(offer)} is ${fmtPct(-discount)} over tracked (${fmt$(offer - tracked)} per unit)`);
+
+  if (discount >= t.floorPct) {
+    verdict = 'PASS';
+    reasons.push(`Crossed the ${t.floorPct}% sanity floor — a price this far under market usually means wrong item, damage, or a fake`);
+    reasons.push('Verify authenticity and condition before reconsidering');
+  } else if (discount >= t.takePct) {
+    verdict = 'TAKE';
+    reasons.push(`Clears the ${t.takePct}% TAKE threshold${qty > 1 ? ` — ${fmt$(trackedTotal - total)} under tracked on the lot` : ''}`);
+  } else if (discount >= -t.counterMaxOverPct) {
+    verdict = 'COUNTER';
+    counter = Math.max(0, Math.round(tracked * (1 - t.counterTargetPct / 100) * 100) / 100);
+    reasons.push(`Inside the COUNTER band (${t.counterMaxOverPct}% over to ${t.takePct}% under tracked)`);
+    reasons.push(`Suggested counter targets ${t.counterTargetPct}% under tracked`);
+  } else {
+    verdict = 'PASS';
+    reasons.push(`More than ${t.counterMaxOverPct}% over tracked — outside the COUNTER band`);
+  }
+  return { verdict, discount, counter, total, trackedTotal, reasons };
+}
+
+/* ===================== navigation ===================== */
+document.querySelectorAll('nav button').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('active', x === b));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('active', p.id === 'panel-' + b.dataset.panel));
+    window.scrollTo({ top: 0 });
+  });
+});
+
+/* ===================== evaluate panel ===================== */
+let acItems = [], acIndex = -1;
+function search(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  const toks = q.split(/\s+/);
+  const scored = [];
+  for (const it of prices.items) {
+    const hay = (it.name + ' ' + (it.set || '')).toLowerCase();
+    if (!toks.every((t) => hay.includes(t))) continue;
+    let s = hay.startsWith(q) ? 0 : it.name.toLowerCase().includes(q) ? 1 : 2;
+    scored.push([s, it]);
+  }
+  return scored.sort((a, b) => a[0] - b[0] || a[1].name.localeCompare(b[1].name)).slice(0, 8).map((x) => x[1]);
+}
+function renderAc() {
+  const box = $('ac');
+  if (!acItems.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.innerHTML = acItems.map((it, i) =>
+    `<div data-i="${i}" class="${i === acIndex ? 'hi' : ''}"><span class="name">${esc(it.name)}${it.set ? ` <span class="v">· ${esc(it.set)}</span>` : ''}</span><span class="v">${fmt$(it.value)}</span></div>`).join('');
+  box.hidden = false;
+}
+function pick(it) {
+  $('item').value = it.name + (it.set ? ` (${it.set})` : '');
+  $('tracked').value = Number(it.value).toFixed(2);
+  acItems = []; renderAc();
+  $('offer').focus();
+}
+$('item').addEventListener('input', (e) => { acItems = search(e.target.value); acIndex = -1; renderAc(); });
+$('item').addEventListener('focus', (e) => { acItems = search(e.target.value); renderAc(); });
+$('item').addEventListener('keydown', (e) => {
+  if ($('ac').hidden) return;
+  if (e.key === 'ArrowDown') { acIndex = Math.min(acIndex + 1, acItems.length - 1); renderAc(); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { acIndex = Math.max(acIndex - 1, 0); renderAc(); e.preventDefault(); }
+  else if (e.key === 'Enter' && acIndex >= 0) { pick(acItems[acIndex]); e.preventDefault(); }
+  else if (e.key === 'Escape') { acItems = []; renderAc(); }
+});
+$('ac').addEventListener('mousedown', (e) => { const d = e.target.closest('[data-i]'); if (d) { pick(acItems[+d.dataset.i]); e.preventDefault(); } });
+document.addEventListener('click', (e) => { if (!e.target.closest('#item, #ac')) { acItems = []; renderAc(); } });
+
+$('evalBtn').addEventListener('click', runEvaluation);
+['offer', 'tracked', 'qty'].forEach((id) => $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') runEvaluation(); }));
+
+function runEvaluation() {
+  const item = $('item').value.trim();
+  const tracked = parseFloat($('tracked').value);
+  const offer = parseFloat($('offer').value);
+  const qty = Math.max(1, parseInt($('qty').value || '1', 10) || 1);
+  const err = $('evalErr');
+  err.textContent = '';
+  if (!item) { err.textContent = 'Enter an item name.'; return; }
+  if (!(tracked > 0)) { err.textContent = 'Tracked value must be greater than 0 — pick an item from the price table or type it in.'; return; }
+  if (!(offer >= 0)) { err.textContent = 'Enter an offer price.'; return; }
+
+  const r = evaluate({ tracked, offer, qty, t: thresholds });
+  const cls = r.verdict.toLowerCase();
+  $('verdict').innerHTML = `
+    <div class="verdict ${cls}">
+      <div class="item">${esc(item)}${qty > 1 ? ` × ${qty}` : ''}</div>
+      <div class="label">${r.verdict}</div>
+      <div class="delta">${r.discount >= 0 ? fmtPct(r.discount) + ' under tracked' : fmtPct(-r.discount) + ' over tracked'}${qty > 1 ? ` · lot ${fmt$(r.total)} vs ${fmt$(r.trackedTotal)}` : ''}</div>
+      ${r.counter != null ? `<div class="counterPrice">Suggested counter <b>${fmt$(r.counter)}</b> per unit${qty > 1 ? ` · ${fmt$(r.counter * qty)} for ${qty}` : ''}</div>` : ''}
+      <ul>${r.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    </div>`;
+  $('verdict').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  log.unshift({ ts: new Date().toISOString(), item, offer, tracked, qty, discountPct: Math.round(r.discount * 10) / 10, verdict: r.verdict, counter: r.counter });
+  if (log.length > 5000) log.length = 5000;
+  store.set(STORE_KEYS.log, log);
+  renderLog();
+}
+
+/* ===================== prices panel ===================== */
+function parseCSV(text) {
+  // RFC-4180-ish: handles quoted fields with commas/newlines/escaped quotes.
+  const rows = []; let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
+      else field += c;
+    } else if (c === '"') inQ = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.some((f) => f.trim() !== '')) rows.push(row);
+      row = [];
+    } else field += c;
+  }
+  row.push(field);
+  if (row.some((f) => f.trim() !== '')) rows.push(row);
+  return rows;
+}
+
+// "Name : 123" / "Name, 123" / "Name<TAB>123" — one item per line, value last.
+function parseManual(text) {
+  const items = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(/^(.*?)[\s]*[:,\t][\s]*\$?\s*([0-9][0-9,]*\.?[0-9]*)\s*$/);
+    if (m) items.push({ name: m[1].replace(/^"|"$/g, '').trim(), value: parseMoney(m[2]) });
+  }
+  return items.filter((i) => i.name && i.value > 0);
+}
+
+let preview = null; // { header, rows }
+function detectCol(header, kind) {
+  const hs = header.map(normHeader);
+  for (const hint of COLUMN_HINTS[kind]) {
+    const idx = hs.findIndex((h) => h === hint);
+    if (idx >= 0) return idx;
+  }
+  for (const hint of COLUMN_HINTS[kind]) {
+    const idx = hs.findIndex((h) => h.includes(hint));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+function fillSelect(sel, header, chosen, optional) {
+  sel.innerHTML = (optional ? '<option value="-1">— none —</option>' : '') +
+    header.map((h, i) => `<option value="${i}" ${i === chosen ? 'selected' : ''}>${esc(h || '(col ' + (i + 1) + ')')}</option>`).join('');
+}
+function mappedItems() {
+  if (!preview) return [];
+  const n = +$('colName').value, v = +$('colValue').value, s = +$('colSet').value, q = +$('colQty').value;
+  const divide = $('divideQty').checked && q >= 0;
+  const out = [];
+  for (const r of preview.rows) {
+    const name = (r[n] || '').trim();
+    let value = parseMoney(r[v]);
+    if (divide) { const qn = parseFloat(r[q]); if (qn > 0) value = value / qn; }
+    if (!name || !(value > 0)) continue;
+    const item = { name, value: Math.round(value * 100) / 100 };
+    if (s >= 0 && (r[s] || '').trim()) item.set = r[s].trim();
+    out.push(item);
+  }
+  return out;
+}
+function renderPreview() {
+  const items = mappedItems();
+  const skipped = preview.rows.length - items.length;
+  $('mapSummary').innerHTML = `<b>${items.length}</b> usable rows${skipped ? `, <span style="color:var(--pass)">${skipped} skipped</span> (blank name or non-numeric value)` : ''}`;
+  $('previewTbl').innerHTML = '<tr><th>Name</th><th>Set</th><th class="num">Value</th></tr>' +
+    items.slice(0, 5).map((it) => `<tr><td>${esc(it.name)}</td><td>${esc(it.set || '')}</td><td class="num">${fmt$(it.value)}</td></tr>`).join('') +
+    (items.length > 5 ? `<tr><td colspan="3" style="color:var(--muted)">… and ${items.length - 5} more</td></tr>` : '');
+  $('loadBtn').disabled = $('mergeBtn').disabled = items.length === 0;
+}
+['colName', 'colValue', 'colSet', 'colQty', 'divideQty'].forEach((id) => $(id).addEventListener('change', renderPreview));
+
+$('parseBtn').addEventListener('click', () => {
+  const text = $('csvIn').value;
+  $('csvErr').textContent = '';
+  $('mapCard').hidden = true; preview = null;
+  if (!text.trim()) { $('csvErr').textContent = 'Paste something first.'; return; }
+
+  const rows = parseCSV(text);
+  const looksLikeCSV = rows.length >= 2 && rows[0].length >= 2 && detectCol(rows[0], 'value') >= 0;
+  if (looksLikeCSV) {
+    const header = rows[0].map((h) => h.trim());
+    preview = { header, rows: rows.slice(1) };
+    fillSelect($('colName'), header, detectCol(header, 'name') >= 0 ? detectCol(header, 'name') : 0, false);
+    fillSelect($('colValue'), header, detectCol(header, 'value'), false);
+    fillSelect($('colSet'), header, detectCol(header, 'set'), true);
+    fillSelect($('colQty'), header, detectCol(header, 'qty'), true);
+    $('divideQty').checked = false;
+    $('mapCard').hidden = false; renderPreview();
+    $('mapCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  // Fallback: manual "name, value" lines.
+  const items = parseManual(text);
+  if (!items.length) { $('csvErr').textContent = 'Couldn\'t read that. For CSV, include a header row with a value/price column. For manual entry use one "Item name, 123.45" per line.'; return; }
+  preview = { header: ['Item', 'Value'], rows: items.map((i) => [i.name, String(i.value)]) };
+  fillSelect($('colName'), preview.header, 0, false); fillSelect($('colValue'), preview.header, 1, false);
+  fillSelect($('colSet'), preview.header, -1, true); fillSelect($('colQty'), preview.header, -1, true);
+  $('mapCard').hidden = false; renderPreview();
+});
+$('clearCsvBtn').addEventListener('click', () => { $('csvIn').value = ''; $('mapCard').hidden = true; preview = null; $('csvErr').textContent = ''; });
+
+function dedupe(items) {
+  // Same name+set appearing twice (e.g. different conditions) → keep the last row.
+  const m = new Map();
+  for (const it of items) m.set((it.name + '|' + (it.set || '')).toLowerCase(), it);
+  return [...m.values()];
+}
+function commitPrices(items, merge) {
+  const next = merge ? dedupe([...prices.items, ...items]) : dedupe(items);
+  prices = { updatedAt: new Date().toISOString(), items: next.sort((a, b) => a.name.localeCompare(b.name)) };
+  if (!store.set(STORE_KEYS.prices, prices)) $('csvErr').textContent = 'Saved for this session only — browser storage is unavailable (private window?).';
+  $('mapCard').hidden = true; preview = null; $('csvIn').value = '';
+  renderPrices();
+}
+$('loadBtn').addEventListener('click', () => commitPrices(mappedItems(), false));
+$('mergeBtn').addEventListener('click', () => commitPrices(mappedItems(), true));
+$('clearPricesBtn').addEventListener('click', () => { prices = { updatedAt: null, items: [] }; store.set(STORE_KEYS.prices, prices); renderPrices(); });
+$('priceFilter').addEventListener('input', renderPrices);
+
+function renderPrices() {
+  const n = prices.items.length;
+  $('priceCount').textContent = `${n} item${n === 1 ? '' : 's'}`;
+  $('hdrCount').textContent = n ? `${n} prices · ${fmtWhen(prices.updatedAt)}` : 'no prices loaded';
+  $('hdrCount').className = 'pill ' + (n ? 'ok' : 'warn');
+  $('priceMeta').textContent = n ? `Last updated ${fmtWhen(prices.updatedAt)}. Paste a fresh export to refresh.` : 'Nothing loaded.';
+  $('noPrices').hidden = n > 0;
+  const q = $('priceFilter').value.trim().toLowerCase();
+  const rows = prices.items.filter((it) => !q || (it.name + ' ' + (it.set || '')).toLowerCase().includes(q));
+  $('priceTbl').innerHTML = rows.length
+    ? '<tr><th>Name</th><th>Set</th><th class="num">Tracked</th></tr>' + rows.slice(0, 300).map((it) => `<tr><td>${esc(it.name)}</td><td>${esc(it.set || '')}</td><td class="num">${fmt$(it.value)}</td></tr>`).join('') +
+      (rows.length > 300 ? `<tr><td colspan="3" style="color:var(--muted)">Showing 300 of ${rows.length} — use the filter</td></tr>` : '')
+    : '<tr><td class="empty">No items</td></tr>';
+}
+
+/* ===================== thresholds panel ===================== */
+const TFIELDS = { tTake: 'takePct', tCounterMax: 'counterMaxOverPct', tCounterTarget: 'counterTargetPct', tFloor: 'floorPct' };
+function renderThresholds() {
+  for (const [id, key] of Object.entries(TFIELDS)) $(id).value = thresholds[key];
+  const t = thresholds;
+  // Visual band across discount range [-20%, floor+10%] mapped left→right as offer rising.
+  const lo = -(t.floorPct + 10), hi = t.counterMaxOverPct + 15; // in "offer relative to tracked" terms (negative = under)
+  const span = hi - lo, w = (a, b) => Math.max(0, (b - a) / span * 100) + '%';
+  $('band').innerHTML =
+    `<span class="f" style="width:${w(lo, -t.floorPct)}" title="sanity PASS"></span>` +
+    `<span class="t" style="width:${w(-t.floorPct, -t.takePct)}" title="TAKE"></span>` +
+    `<span class="c" style="width:${w(-t.takePct, t.counterMaxOverPct)}" title="COUNTER"></span>` +
+    `<span class="p" style="width:${w(t.counterMaxOverPct, hi)}" title="PASS"></span>`;
+  $('bandText').innerHTML = `<span style="color:var(--take)"><b>TAKE</b></span> ${t.takePct}%–${t.floorPct}% under · <span style="color:var(--counter)"><b>COUNTER</b></span> ${t.counterMaxOverPct}% over to ${t.takePct}% under (counter at ${t.counterTargetPct}% under) · <span style="color:var(--pass)"><b>PASS</b></span> more than ${t.counterMaxOverPct}% over, or more than ${t.floorPct}% under.`;
+}
+for (const [id, key] of Object.entries(TFIELDS)) {
+  $(id).addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    if (Number.isFinite(v) && v >= 0) { thresholds[key] = v; store.set(STORE_KEYS.thresholds, thresholds); renderThresholds(); }
+  });
+}
+$('resetThreshBtn').addEventListener('click', () => { thresholds = { ...DEFAULT_THRESHOLDS }; store.set(STORE_KEYS.thresholds, thresholds); renderThresholds(); });
+
+/* ===================== log panel ===================== */
+function renderLog() {
+  $('logCount').textContent = log.length;
+  $('logTbl').innerHTML = log.length
+    ? '<tr><th>When</th><th>Item</th><th class="num">Qty</th><th class="num">Offer</th><th class="num">Tracked</th><th class="num">Δ</th><th>Verdict</th></tr>' +
+      log.slice(0, 200).map((e) => `<tr><td>${fmtWhen(e.ts)}</td><td>${esc(e.item)}</td><td class="num">${e.qty}</td><td class="num">${fmt$(e.offer)}</td><td class="num">${fmt$(e.tracked)}</td><td class="num">${fmtPct(e.discountPct)}</td><td><span class="tag ${e.verdict}">${e.verdict}</span>${e.counter != null ? ` <span style="color:var(--muted)">@ ${fmt$(e.counter)}</span>` : ''}</td></tr>`).join('') +
+      (log.length > 200 ? `<tr><td colspan="7" style="color:var(--muted)">Showing latest 200 of ${log.length} — export for the full log</td></tr>` : '')
+    : '<tr><td class="empty">No evaluations yet</td></tr>';
+  $('exportBtn').disabled = $('clearLogBtn').disabled = log.length === 0;
+}
+$('exportBtn').addEventListener('click', () => {
+  const q = (s) => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+  const lines = ['timestamp,item,quantity,offer_per_unit,tracked_value,discount_pct,verdict,suggested_counter,outcome,notes'];
+  for (const e of [...log].reverse()) lines.push([e.ts, q(e.item), e.qty, e.offer, e.tracked, e.discountPct, e.verdict, e.counter ?? '', '', ''].join(','));
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `deal-evaluator-log-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('clearLogBtn').addEventListener('click', () => { $('clearLogN').textContent = log.length; $('clearLogConfirm').hidden = false; });
+$('clearLogNo').addEventListener('click', () => { $('clearLogConfirm').hidden = true; });
+$('clearLogYes').addEventListener('click', () => { log = []; store.set(STORE_KEYS.log, log); $('clearLogConfirm').hidden = true; renderLog(); });
+
+/* ===================== boot ===================== */
+renderPrices(); renderThresholds(); renderLog();
+</script>
+</body>
+</html>
