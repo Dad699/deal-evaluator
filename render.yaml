@@ -1,0 +1,15 @@
+# Render Blueprint — Deal Evaluator (static, single file, free tier).
+# Dashboard → New → Blueprint → select this repo → Apply.
+services:
+  - type: web
+    name: deal-evaluator
+    runtime: static
+    repo: https://github.com/Dad699/deal-evaluator
+    branch: main
+    buildCommand: ""
+    staticPublishPath: .
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache

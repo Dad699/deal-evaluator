@@ -78,7 +78,7 @@ Data is per browser, per device. Clearing site data wipes it — export the log 
 
 It's one file; any static host works. Pick one:
 
-**Render (matches the rest of the stack)** — New → Static Site → connect this repo → build command *(blank)* → publish directory `.` → deploy. Free tier is fine.
+**Render (matches the rest of the stack)** — a `render.yaml` Blueprint is checked in: Dashboard → New → Blueprint → select this repo → Apply. (Or manually: New → Static Site → build command blank → publish directory `.`.) Free tier is fine.
 
 **Netlify / Vercel** — drag the folder onto the dashboard, or connect the repo with no build step and output directory `.`.
 
